@@ -1,412 +1,303 @@
-# DocumentReaderSDK
+# Clean Architecture + SwiftUI
 
-A Swift Package Manager-based iOS SDK that provides a guided identity-verification capture flow.
+A practical iOS demo application built with **SwiftUI** and **Clean
+Architecture**, demonstrating how to structure a scalable and testable
+application using modern Swift concepts.
 
-## Features
+The application fetches users from a REST API and displays them in a
+SwiftUI list.
 
-- Consent before identity capture
-- First name and last name collection
-- Front-camera selfie capture
-- Face detection with Vision
-- Fixed centered selfie capture guide
-- Automatic selfie capture after stable face detection
-- Selfie preview with Retake / Confirm
-- Selfie crop to capture region
-- Document rectangle detection with Vision
-- Automatic document capture after stable detection
-- Document preview with Retake / Confirm
-- SDK-owned navigation and dismissal
-- Swift Package Manager
-- No third-party dependencies
+## 🚀 Features
 
-## Requirements
+-   SwiftUI-based user interface
+-   Clean Architecture
+-   MVVM presentation layer
+-   Async/await networking
+-   REST API integration
+-   Repository Pattern
+-   Use Case pattern
+-   Protocol-based Dependency Injection
+-   DTO to Domain Model mapping
+-   UI state management
+-   Error handling
+-   Unit testing with XCTest
+-   Test doubles / Spies for dependency isolation
 
-| Requirement | Version |
-|---|---|
-| Platform | iOS |
-| Minimum iOS | 16.0 |
-| Language | Swift |
-| Distribution | Swift Package Manager |
-| External dependencies | None |
+## 🏗️ Architecture
 
-The minimum deployment target should match `Package.swift`.
+The project follows a layered Clean Architecture approach:
 
-## Installation
-
-Add the package to your Xcode project and import:
-
-```swift
-import DocumentReaderSDK
+``` text
+Presentation
+     ↓
+   Domain
+     ↓
+    Data
+     ↓
+    Core
 ```
 
-The library product is:
+### Dependency Flow
 
-```text
-DocumentReaderSDK
+``` text
+UserListView
+      ↓
+UserListViewModel
+      ↓
+GetUserUseCase
+      ↓
+UserRepositoryProtocol
+      ↓
+UserRepository
+      ↓
+UserAPIProtocol
+      ↓
+UserAPI
+      ↓
+NetworkClient
+      ↓
+URLSession
+      ↓
+REST API
 ```
 
-## Basic Usage
+Dependencies point toward abstractions rather than concrete
+implementations wherever appropriate.
 
-The host application only needs to start the SDK:
+## 📁 Project Structure
 
-```swift
-import UIKit
-import DocumentReaderSDK
+``` text
+Clean Architecture + SwiftUI
+│
+├── Presentation
+│   ├── Views
+│   │   ├── UserListView.swift
+│   │   ├── LoadingView.swift
+│   │   └── ErrorView.swift
+│   │
+│   └── ViewModels
+│       └── UserListViewModel.swift
+│
+├── Domain
+│   ├── Models
+│   │   └── User.swift
+│   │
+│   ├── Repositories
+│   │   └── UserRepositoryProtocol.swift
+│   │
+│   └── UseCases
+│       ├── GetUserUseCase.swift
+│       └── GetUserUseCaseProtocol.swift
+│
+├── Data
+│   ├── API
+│   │   ├── UserAPI.swift
+│   │   └── UserAPIProtocol.swift
+│   │
+│   ├── DTOs
+│   │   └── UserDTO.swift
+│   │
+│   └── Repositories
+│       └── UserRepository.swift
+│
+├── Core
+│   └── Networking
+│       ├── NetworkClient.swift
+│       ├── NetworkClientProtocol.swift
+│       └── NetworkError.swift
+│
+└── Tests
+    ├── Data
+    │   └── UserRepositoryTests.swift
+    ├── Domain
+    │   └── GetUsersUseCaseTests.swift
+    ├── Presentation
+    │   └── UserListViewModelTests.swift
+    └── Mock
+        ├── UserAPISpy.swift
+        ├── UserRepositorySpy.swift
+        └── GetUsersUseCaseSpy.swift
+```
 
-final class ViewController: UIViewController {
+## 🔄 Data Flow
 
-    func startVerification() {
-        let reader = DocumentReader()
+When the application loads the user list:
 
-        Task { @MainActor in
-            do {
-                let result = try await reader.start(from: self)
+``` text
+UserListView
+      │
+      ▼
+UserListViewModel
+      │
+      ▼
+GetUserUseCase
+      │
+      ▼
+UserRepository
+      │
+      ▼
+UserAPI
+      │
+      ▼
+NetworkClient
+      │
+      ▼
+REST API
+```
 
-                print("First Name:", result.firstName)
-                print("Last Name:", result.lastName)
-                print("Selfie:", result.selfie)
-            } catch {
-                print("Document Reader failed:", error)
-            }
-        }
+The API response is decoded into `UserDTO` objects.
+
+The repository maps the DTO into the domain model:
+
+``` text
+UserDTO
+   ↓
+User
+```
+
+The domain model is then returned to the ViewModel and displayed by
+SwiftUI.
+
+## 🌐 API
+
+This project uses the public **JSONPlaceholder** API:
+
+`https://jsonplaceholder.typicode.com/users`
+
+The response is decoded into `UserDTO` objects.
+
+## 💉 Dependency Injection
+
+Dependencies are injected through protocols.
+
+For example:
+
+``` swift
+final class UserRepository: UserRepositoryProtocol {
+
+    private let api: UserAPIProtocol
+
+    init(api: UserAPIProtocol) {
+        self.api = api
     }
 }
 ```
 
-The SDK owns the complete flow:
+This keeps the repository independent of the concrete API implementation
+and makes it easier to test.
 
-```text
-Host App
-   |
-   v
-Consent
-   |
-   v
-User Details
-   |
-   v
-Selfie Capture
-   |
-   v
-Selfie Confirmation
-   |
-   v
-Document Capture
-   |
-   v
-Document Confirmation
-   |
-   v
-SDK Dismissed
-   |
-   v
-DocumentReaderResult
+Production code can use `UserAPI`, while tests can use `UserAPISpy`.
+
+``` text
+Production:
+UserRepository → UserAPI
+
+Testing:
+UserRepository → UserAPISpy
 ```
 
-## Public API
+## 🧪 Unit Testing
 
-### DocumentReader
+The project includes unit tests for the major layers.
 
-Main SDK entry point:
+### ViewModel Tests
 
-```swift
-public final class DocumentReader
-```
+-   Successful user loading
+-   Error handling
+-   Use case invocation
 
-```swift
-@MainActor
-public func start(
-    from viewController: UIViewController
-) async throws -> DocumentReaderResult
-```
+### Repository Tests
 
-### DocumentReaderResult
+-   DTO to Domain Model mapping
+-   API failure handling
 
-Current result:
+### Use Case Tests
 
-```swift
-public struct DocumentReaderResult {
-    public let firstName: String
-    public let lastName: String
-    public let selfie: UIImage
-}
-```
+-   Returning users from the repository
+-   Propagating repository errors
 
-The document image is currently handled internally. It can be added to the public result model when required.
-
-### DocumentReaderError
-
-SDK flow failures are represented by `DocumentReaderError` and are returned through the thrown error from `start()`.
-
-## Verification Flow
-
-### 1. Consent
-
-The SDK asks the user to agree before collecting identity information, a selfie, and an identity document.
-
-### 2. User Details
-
-The user enters first name and last name. `Next` becomes enabled only when both fields contain values.
-
-### 3. Selfie Capture
-
-The SDK starts the front camera and displays a fixed centered capture box.
-
-Vision detects the face. The SDK waits for a correctly positioned, stable face and automatically captures the selfie.
-
-### 4. Selfie Validation
-
-The current implementation includes:
-
-- Face detection
-- Single-face validation
-- Brightness analysis
-- Blur/sharpness analysis
-- Stable-position detection
-
-### 5. Selfie Confirmation
-
-The captured selfie is shown for confirmation.
-
-- Red X = Retake
-- Green check = Continue to document capture
-
-The returned selfie is cropped to the capture region.
-
-### 6. Document Capture
-
-Vision rectangle detection is used to detect document-like rectangular regions. The SDK waits for a stable document detection and automatically captures it.
-
-### 7. Document Confirmation
-
-- Red X = Retake
-- Green check = Complete
-
-After confirmation, the SDK dismisses its navigation controller and returns the result.
-
-## Internal Apple Frameworks
-
-The SDK currently uses Apple's native frameworks only.
-
-### UIKit
-
-Used for UI and navigation:
-
-```swift
-import UIKit
-```
-
-Examples:
-
-- `UIViewController`
-- `UINavigationController`
-- `UILabel`
-- `UIButton`
-- `UITextField`
-- `UIImage`
-- Auto Layout
-
-### AVFoundation
-
-Used for camera capture:
-
-```swift
-import AVFoundation
-```
-
-Examples:
-
-- `AVCaptureSession`
-- `AVCaptureDevice`
-- `AVCaptureDeviceInput`
-- `AVCaptureVideoDataOutput`
-- `AVCapturePhotoOutput`
-- `AVCaptureVideoPreviewLayer`
-- `AVCaptureConnection`
-
-### Vision
-
-Used for computer-vision detection:
-
-```swift
-import Vision
-```
-
-Face detection:
-
-```swift
-VNDetectFaceRectanglesRequest
-```
-
-Document detection:
-
-```swift
-VNDetectRectanglesRequest
-```
-
-### Core Image
-
-Used for image processing and quality analysis:
-
-```swift
-import CoreImage
-```
-
-Examples:
-
-- `CIImage`
-- `CIContext`
-
-### Swift Concurrency
-
-Used for sequential SDK orchestration:
-
-```swift
-async
-await
-Task
-withCheckedContinuation
-```
-
-The public API therefore exposes one asynchronous operation while the SDK internally coordinates multiple screens.
-
-## Recommended Folder Structure
-
-```text
-DocumentReaderSDK/
-├── Package.swift
-├── README.md
-│
-├── Sources/
-│   └── DocumentReaderSDK/
-│       ├── Public/
-│       │   ├── DocumentReader.swift
-│       │   ├── DocumentReaderError.swift
-│       │   └── DocumentReaderResult.swift
-│       │
-│       ├── Flow/
-│       │   ├── ConsentViewController.swift
-│       │   ├── UserDetailsViewController.swift
-│       │   ├── SelfieViewController.swift
-│       │   └── DocumentScannerViewController.swift
-│       │
-│       ├── Camera/
-│       │   ├── CameraManager.swift
-│       │   ├── AVCaptureCameraManager.swift
-│       │   ├── FaceCameraManager.swift
-│       │   ├── DocumentCameraManager.swift
-│       │   └── SimulatorCameraManager.swift
-│       │
-│       ├── Detection/
-│       │   ├── FaceDetector.swift
-│       │   ├── DocumentDetector.swift
-│       │   └── ImageQualityAnalyzer.swift
-│       │
-│       └── Models/
-│           ├── UserDetails.swift
-│           └── CapturedDocument.swift
-│
-└── Tests/
-    └── DocumentReaderSDKTests/
-        └── DocumentReaderSDKTests.swift
-```
-
-## Why This Structure?
-
-### Public
-
-Only types that consumers need:
-
-```text
-DocumentReader
-DocumentReaderResult
-DocumentReaderError
-```
-
-### Flow
-
-All SDK screens and flow-specific UI.
-
-### Camera
-
-Camera session, preview and capture implementations.
-
-### Detection
-
-Vision and image-quality logic.
-
-### Models
-
-Internal data structures shared between SDK components.
-
-## Simulator Support
-
-`SimulatorCameraManager` provides a development/test implementation for simulator use.
-
-For realistic camera behavior, test on a physical iPhone.
-
-## Camera Permission
-
-The host application must provide a camera usage description in `Info.plist`:
-
-```text
-Privacy - Camera Usage Description
-```
+Tests use spies instead of making real network requests.
 
 Example:
 
-```text
-Camera access is required to capture your selfie and identity document.
+``` text
+UserListViewModel
+        ↓
+GetUserUseCaseSpy
 ```
 
-## Current Scope and Limitations
+This allows components to be tested independently.
 
-This is a learning/reference implementation of an identity-capture SDK. It should not be presented as a production identity-verification system.
+## 🛠️ Technologies
 
-It currently does **not** implement:
+-   **Swift**
+-   **SwiftUI**
+-   **Swift Concurrency**
+-   **async/await**
+-   **XCTest**
+-   **URLSession**
+-   **MVVM**
+-   **Clean Architecture**
+-   **Dependency Injection**
+-   **Repository Pattern**
 
-- OCR/data extraction
-- MRZ parsing
-- Barcode decoding
-- NFC document reading
-- Face recognition/matching
-- Active/passive liveness detection
-- Document authenticity verification
-- Server-side identity verification
-- Fraud detection
-- Production PII lifecycle management
-- Encryption-at-rest
+## 🎯 Purpose
 
-These would require additional implementation, backend integration and security review.
+This project was created as a practical demonstration of how to build a
+**clean, modular, maintainable, and testable SwiftUI application**.
 
-## Testing Areas
+The primary focus is on architecture and separation of responsibilities
+rather than application complexity.
 
-Recommended tests include:
+## 📌 Key Architectural Principles
 
-- Consent acceptance
-- User details validation
-- Selfie capture and retake
-- Document capture and retake
-- No face / multiple faces
-- Face outside / inside capture region
-- No document / document detected
-- Dark image
-- Blurry image
-- Camera unavailable
-- Camera permission denied
-- Capture failure
-- Complete end-to-end flow
+### Separation of Concerns
 
-## Architecture Goal
+Each layer has a clearly defined responsibility.
 
-The host application's integration point should remain simple:
+### Dependency Inversion
 
-```swift
-try await reader.start(from: self)
+Higher-level components depend on protocols rather than concrete
+implementations.
+
+### Testability
+
+Dependencies can be replaced with test doubles, allowing unit tests
+without making real network requests.
+
+### Domain Independence
+
+The Domain layer does not depend on SwiftUI, URLSession, or networking
+implementation details.
+
+## ▶️ Getting Started
+
+1.  Clone the repository.
+2.  Open the Xcode project.
+3.  Select an iOS Simulator or connected device.
+4.  Build and run the application.
+5.  Run unit tests using:
+
+``` text
+⌘ + U
 ```
 
-All camera, Vision, UI navigation, validation and capture orchestration should remain internal to the SDK.
+## 📚 Learning Goals
 
-## License
+This project demonstrates practical understanding of:
 
-Add the project's chosen license before publishing the repository publicly.
+-   Clean Architecture
+-   MVVM
+-   Protocol-oriented design
+-   Dependency Injection
+-   Repository Pattern
+-   Use Case Pattern
+-   REST API integration
+-   Swift Concurrency
+-   Error handling
+-   Unit Testing
+-   Testable architecture
+
+------------------------------------------------------------------------
+
+**Built with Swift & SwiftUI**
